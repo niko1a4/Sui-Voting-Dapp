@@ -5,7 +5,6 @@ import './App.css';
 import VotingCard from './components/VotingCard';
 import ResultsCard from './components/ResultsCard';
 
-// UPDATE THESE WITH YOUR DEPLOYED CONTRACT VALUES
 const PACKAGE_ID = '0x994298cc21abfa191b0c90b87c9bef756ff69740726999f49d8e98d76cc092db';
 const POLL_ID = '0x35a323cf92fa13bb220ba03171da218861b1dc632badbd9cea8952df132d5471';
 
