@@ -25,7 +25,7 @@ Congrats! You have voted on the poll.
 ## Project Structure
 ```
 voting-dapp/
-├── move/                   # Smart contract
+├── voting_dapp/                   # Smart contract
 │   ├── sources/
 │   │   └── voting_dapp.move
 │   ├── tests/
