@@ -1,6 +1,6 @@
 # Sui Voting DApp
 
-A decentralized voting application built on the Sui blockchain using Move smart contracts and a React TypeScript frontend.
+A decentralized voting application built on the Sui blockchain using Move smart contracts, a React TypeScript frontend, and Nestjs backend.
 
 # App display
 ![](images/Screenshot%202025-12-01%20181914.png)
@@ -20,27 +20,7 @@ Congrats! You have voted on the poll.
 - Real-time results display
 - Admin-controlled poll creation
 - Transparent vote counting
-- Responsive web interface
 
-## Project Structure
-```
-voting-dapp/
-├── voting_dapp/                   # Smart contract
-│   ├── sources/
-│   │   └── voting_dapp.move
-│   ├── tests/
-│   │   └── voting_dapp_tests.move
-│   └── Move.toml
-└── voting-frontend/        # React frontend
-    ├── src/
-    │   ├── components/
-    │   │   ├── VotingCard.tsx
-    │   │   └── ResultsCard.tsx
-    │   ├── App.tsx
-    │   ├── App.css
-    │   └── main.tsx
-    └── package.json
-```
 
 ## Prerequisites
 
@@ -160,6 +140,12 @@ Key features:
 - Implements strict access control with AdminCap
 - Prevents double voting at the contract level
 
+### Backend
+
+- Uses Nestjs 
+- Has sponsor module with controller and service
+- Loads Enoki private API key designed for backends
+
 ### Frontend
 
 Built with React and TypeScript using Vite. Key components:
@@ -168,23 +154,6 @@ Built with React and TypeScript using Vite. Key components:
 - ResultsCard: Shows live voting results with progress bars
 - Uses @mysten/dapp-kit for wallet integration
 - Polls blockchain every 5 seconds for updates
-
-## Troubleshooting
-
-**Wallet connection fails**
-- Ensure Sui Wallet extension is installed
-- Switch wallet to testnet network
-- Verify you have testnet SUI tokens
-
-**Vote transaction fails**
-- Check PACKAGE_ID and POLL_ID are correct
-- Ensure wallet is on testnet
-- Verify you haven't already voted
-
-**Results not updating**
-- Hard refresh browser (Ctrl+Shift+R)
-- Check browser console for errors
-- Verify RPC connection to testnet
 
 ## License
 

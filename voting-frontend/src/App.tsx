@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ConnectButton, useCurrentAccount, useSignAndExecuteTransaction, useSuiClient } from '@mysten/dapp-kit';
+import { ConnectButton, useCurrentAccount, useSignTransaction, useSuiClient } from '@mysten/dapp-kit';
 import { Transaction } from '@mysten/sui/transactions';
 import './App.css';
 import VotingCard from './components/VotingCard';
@@ -7,6 +7,7 @@ import ResultsCard from './components/ResultsCard';
 
 const PACKAGE_ID = '0x994298cc21abfa191b0c90b87c9bef756ff69740726999f49d8e98d76cc092db';
 const POLL_ID = '0x35a323cf92fa13bb220ba03171da218861b1dc632badbd9cea8952df132d5471';
+const BACKEND_URL = 'http://localhost:3001';
 
 interface PollData {
   question: string;
@@ -16,7 +17,7 @@ interface PollData {
 
 function App() {
   const currentAccount = useCurrentAccount();
-  const { mutate: signAndExecute } = useSignAndExecuteTransaction();
+  const { mutateAsync: signTransaction } = useSignTransaction();
   const suiClient = useSuiClient();
 
   const [pollData, setPollData] = useState<PollData | null>(null);
@@ -42,9 +43,7 @@ function App() {
 
         if (currentAccount) {
           const voterAddress = currentAccount.address;
-          console.log('Current account address:', voterAddress);
           const voted = await checkIfVoted(fields.voters.fields.id.id, voterAddress);
-          console.log('Has voted:', voted);
           setHasVoted(voted);
         }
       }
@@ -56,7 +55,6 @@ function App() {
 
   const checkIfVoted = async (tableId: string, address: string): Promise<boolean> => {
     try {
-
       const dynamicFieldName = {
         type: 'address',
         value: address
@@ -66,15 +64,12 @@ function App() {
         parentId: tableId,
         name: dynamicFieldName
       });
-      console.log('Vote check full result:', field);
-      console.log('field.data:', field.data);
-      console.log('field.error:', field.error);
+
       if (field.error) {
         return false;
       }
       return field.data !== null;
     } catch {
-      console.log('Vote check error (user has not voted):', error);
       return false;
     }
   };
@@ -90,13 +85,14 @@ function App() {
       setError('Please connect your wallet first');
       return;
     }
+
     setVotingInProgress(true);
     setError(null);
     setSelectedOption(optionIndex);
 
     try {
-      const tx = new Transaction();
 
+      const tx = new Transaction();
       tx.moveCall({
         target: `${PACKAGE_ID}::voting_dapp::vote`,
         arguments: [
@@ -105,25 +101,70 @@ function App() {
         ],
       });
 
-      signAndExecute(
-        { transaction: tx },
-        {
-          onSuccess: async () => {
-            console.log('Vote successful');
-            setHasVoted(true);
-            await fetchPollData();
-            setVotingInProgress(false);
-          },
-          onError: (err) => {
-            console.error('Vote failed:', err);
-            setError(err.message || 'Failed to submit vote');
-            setVotingInProgress(false);
-          }
-        }
+
+      const transactionKindBytes = await tx.build({
+        client: suiClient,
+        onlyTransactionKind: true,
+      });
+
+
+      const transactionKindBytesBase64 = btoa(
+        String.fromCharCode(...new Uint8Array(transactionKindBytes))
       );
+
+
+      const sponsorResponse = await fetch(`${BACKEND_URL}/sponsor/transaction`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          transactionKindBytes: transactionKindBytesBase64,
+          sender: currentAccount.address,
+        }),
+      });
+
+      if (!sponsorResponse.ok) {
+        throw new Error('Failed to sponsor transaction');
+      }
+
+      const { bytes: sponsoredBytes, digest } = await sponsorResponse.json();
+      const bytesArray = Uint8Array.from(atob(sponsoredBytes), c => c.charCodeAt(0));
+
+
+      const { signature } = await signTransaction({
+        transaction: Transaction.from(bytesArray),
+      });
+
+      if (!signature) {
+        throw new Error('Failed to sign transaction');
+      }
+
+      const executeResponse = await fetch(`${BACKEND_URL}/sponsor/execute`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          digest,
+          signature,
+        }),
+      });
+
+      if (!executeResponse.ok) {
+        throw new Error('Failed to execute transaction');
+      }
+
+      const result = await executeResponse.json();
+      console.log('Transaction executed:', result);
+
+      setHasVoted(true);
+      await fetchPollData();
+      setVotingInProgress(false);
+
     } catch (err) {
-      console.error('Error creating transaction:', err);
-      setError(err instanceof Error ? err.message : 'Failed to create transaction');
+      console.error('Error voting:', err);
+      setError(err instanceof Error ? err.message : 'Failed to submit vote');
       setVotingInProgress(false);
     }
   };
@@ -132,7 +173,7 @@ function App() {
     <div className="app">
       <header className="app-header">
         <h1>🗳️ Move Voting DApp</h1>
-        <p className="subtitle">Decentralized voting on Sui blockchain</p>
+        <p className="subtitle">Decentralized voting on Sui blockchain (Gas Sponsored by Enoki)</p>
         <div className="connect-button-container">
           <ConnectButton />
         </div>
@@ -154,6 +195,7 @@ function App() {
               <p>✨ One vote per wallet</p>
               <p>🔒 All votes are recorded on-chain</p>
               <p>📊 Results update in real-time</p>
+              <p>⚡ Gas fees sponsored - vote for free!</p>
             </div>
           </div>
         ) : (
@@ -181,7 +223,7 @@ function App() {
       </main>
 
       <footer className="app-footer">
-        <p>Built with Move on Sui</p>
+        <p>Built with Move on Sui | Gas Sponsored by Enoki</p>
       </footer>
     </div>
   );
